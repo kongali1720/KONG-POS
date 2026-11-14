@@ -2,6 +2,12 @@
   <img src="https://raw.githubusercontent.com/kongali1720/KongWallet-Payment-Gateway-API/main/kop_surat.jpg" width="100%" alt="Project Letterhead">
 </p>
 
+<p align="center">
+  <img src="https://raw.githubusercontent.com/kongali1720/KONG-POS/main/KONGALI-POS%20Next-Generation%20Retail%20Terminal.png"
+       width="100%"
+       alt="KONGALI-POS Next-Generation Retail Terminal">
+</p>
+
 <h1 align="center">KONGALI-POS 💳</h1>
 
 <p align="center">
