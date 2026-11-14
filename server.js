@@ -7,7 +7,14 @@ const crypto = require('crypto');
 const app = express();
 const PORT = process.env.PORT || 3050;
 const DB_FILE = path.join(__dirname, 'db.json');
-const USDT_IDR_RATE = 16250; // Kurs acuan settlement TRC20 USDT
+
+// Base prices in IDR with live conversion rates for EUR, USD, IDR, and USDT
+const FX_RATES = {
+  IDR: 1,
+  USD: 16250,
+  EUR: 17600
+};
+const USDT_IDR_RATE = 16250;
 
 app.use(cors());
 app.use(express.json());
@@ -17,7 +24,7 @@ function readDB() {
   if (!fs.existsSync(DB_FILE)) {
     const initial = {
       operators: [
-        { id: 'OP-01', name: 'Razalee Syahdan', role: 'Komisaris / CEO', pin: '1720' },
+        { id: 'OP-01', name: 'Razalee Syahdan', role: 'Commissioner / CEO', pin: '1720' },
         { id: 'OP-02', name: 'Cashier Terminal 01', role: 'Store Operator', pin: '1234' }
       ],
       merchantWallet: {
@@ -27,10 +34,10 @@ function readDB() {
         qrisMerchantId: 'ID1026172099881'
       },
       products: [
-        { id: 'P01', name: 'KONGALI Signature Hoodie', price: 750000, stock: 25, category: 'Apparel' },
-        { id: 'P02', name: 'Web3 Architect Cap', price: 250000, stock: 40, category: 'Accessories' },
-        { id: 'P03', name: 'Encrypted Hardware Key', price: 1200000, stock: 15, category: 'Hardware' },
-        { id: 'P04', name: 'Blockchain Nexus T-Shirt', price: 350000, stock: 30, category: 'Apparel' }
+        { id: 'P01', name: 'KONGALI Signature Hoodie', priceIDR: 750000, stock: 25, category: 'Apparel' },
+        { id: 'P02', name: 'Web3 Architect Cap', priceIDR: 250000, stock: 40, category: 'Accessories' },
+        { id: 'P03', name: 'Encrypted Hardware Key', priceIDR: 1200000, stock: 15, category: 'Hardware' },
+        { id: 'P04', name: 'Blockchain Nexus T-Shirt', priceIDR: 350000, stock: 30, category: 'Apparel' }
       ],
       transactions: [],
       offlineQueue: [],
@@ -46,6 +53,12 @@ function writeDB(data) {
   fs.writeFileSync(DB_FILE, JSON.stringify(data, null, 2));
 }
 
+function convertFromIDR(amountIDR, currency) {
+  const rate = FX_RATES[currency] || 1;
+  if (currency === 'IDR') return Math.round(amountIDR);
+  return Number((amountIDR / rate).toFixed(2));
+}
+
 function generateApprovalCode(digits = 6) {
   if (Number(digits) === 4) {
     return crypto.randomInt(1000, 9999).toString();
@@ -53,7 +66,7 @@ function generateApprovalCode(digits = 6) {
   return crypto.randomInt(100000, 999999).toString();
 }
 
-// Endpoint: Autentikasi PIN Multi-Operator
+// Endpoint: Multi-Operator PIN Login
 app.post('/api/auth/login', (req, res) => {
   const { pin } = req.body;
   const db = readDB();
@@ -71,50 +84,51 @@ app.post('/api/auth/login', (req, res) => {
   });
 });
 
-// Endpoint: Ambil Data POS, Katalog & Konfigurasi Wallet
+// Endpoint: Get POS Catalog, FX Rates & Wallet Info
 app.get('/api/pos/data', (req, res) => {
   const db = readDB();
   res.json({
     products: db.products,
     merchantWallet: db.merchantWallet,
+    fxRates: FX_RATES,
     usdtRate: USDT_IDR_RATE,
     transactionsCount: db.transactions.length,
     offlineQueueCount: db.offlineQueue.length
   });
 });
 
-// Endpoint: Generate Invoice QRIS & Crypto TRC20 USDT
+// Endpoint: Generate Dynamic QRIS or Crypto TRC20 USDT Invoice
 app.post('/api/payments/invoice', (req, res) => {
-  const { items = [], taxRate = 11, serviceRate = 5, method = 'QRIS' } = req.body;
+  const { items = [], currency = 'EUR', taxRate = 11, serviceRate = 5, method = 'QRIS' } = req.body;
   if (!items.length) {
-    return res.status(400).json({ success: false, message: 'Cart is empty.' });
+    return res.status(400).json({ success: false, message: 'Cart is empty. Please add items first.' });
   }
 
   const db = readDB();
-  let subtotal = 0;
+  let subtotalIDR = 0;
   for (let item of items) {
     const prod = db.products.find(p => p.id === item.id);
     if (!prod || prod.stock < item.qty) {
       return res.status(400).json({ success: false, message: `Insufficient stock for ${item.name}` });
     }
-    subtotal += prod.price * item.qty;
+    subtotalIDR += prod.priceIDR * item.qty;
   }
 
-  const taxAmount = (subtotal * taxRate) / 100;
-  const serviceAmount = (subtotal * serviceRate) / 100;
-  const grandTotalIDR = subtotal + taxAmount + serviceAmount;
+  const grandTotalIDR = subtotalIDR * (1 + (taxRate + serviceRate) / 100);
+  const grandTotalSelected = convertFromIDR(grandTotalIDR, currency);
   const amountUSDT = Number((grandTotalIDR / USDT_IDR_RATE).toFixed(2));
   const invoiceRef = 'INV-' + Date.now().toString().slice(-6);
 
   if (method === 'QRIS') {
-    const qrisPayload = `00020101021226610014ID.CO.QRIS.WWW0118936009143${db.merchantWallet.qrisMerchantId}520459995303360540${grandTotalIDR}5802ID5910KONGALIPOS6007JAKARTA62070503${invoiceRef}6304A1B2`;
+    const qrisPayload = `00020101021226610014ID.CO.QRIS.WWW0118936009143${db.merchantWallet.qrisMerchantId}520459995303360540${Math.round(grandTotalIDR)}5802ID5910KONGALIPOS6007JAKARTA62070503${invoiceRef}6304A1B2`;
     return res.json({
       success: true,
       method: 'QRIS',
       invoiceRef,
-      grandTotalIDR,
-      qrisPayload,
-      merchantId: db.merchantWallet.qrisMerchantId
+      currency,
+      grandTotalSelected,
+      grandTotalIDR: Math.round(grandTotalIDR),
+      qrisPayload
     });
   }
 
@@ -122,21 +136,21 @@ app.post('/api/payments/invoice', (req, res) => {
     success: true,
     method: 'TRC20_USDT',
     invoiceRef,
-    grandTotalIDR,
+    currency,
+    grandTotalSelected,
     amountUSDT,
-    rate: USDT_IDR_RATE,
     network: db.merchantWallet.network,
     walletAddress: db.merchantWallet.address
   });
 });
 
-// Endpoint: Verifikasi & Selesaikan Transaksi (CARD / QRIS / TRC20_USDT)
+// Endpoint: Authorize & Settle Payment (CARD / QRIS / TRC20_USDT)
 app.post('/api/transactions/authorize', (req, res) => {
   const {
     operator = { id: 'OP-01', name: 'Razalee Syahdan' },
-    paymentMethod = 'CARD', // CARD | QRIS | TRC20_USDT
+    paymentMethod = 'CARD',
     items = [],
-    currency = 'IDR',
+    currency = 'EUR',
     mode = 'Online',
     protocol = '101.3',
     cardNumber = '',
@@ -153,7 +167,7 @@ app.post('/api/transactions/authorize', (req, res) => {
   }
 
   const db = readDB();
-  let subtotal = 0;
+  let subtotalIDR = 0;
 
   for (let cartItem of items) {
     const product = db.products.find(p => p.id === cartItem.id);
@@ -163,14 +177,19 @@ app.post('/api/transactions/authorize', (req, res) => {
         message: `Insufficient stock for item: ${cartItem.name}`
       });
     }
-    subtotal += product.price * cartItem.qty;
+    subtotalIDR += product.priceIDR * cartItem.qty;
   }
 
-  const taxAmount = (subtotal * taxRate) / 100;
-  const serviceAmount = (subtotal * serviceRate) / 100;
-  const grandTotal = subtotal + taxAmount + serviceAmount;
-  const targetDigits = Number(approvalDigits) === 4 ? 4 : 6;
+  const taxIDR = (subtotalIDR * taxRate) / 100;
+  const serviceIDR = (subtotalIDR * serviceRate) / 100;
+  const grandTotalIDR = subtotalIDR + taxIDR + serviceIDR;
 
+  const subtotal = convertFromIDR(subtotalIDR, currency);
+  const taxAmount = convertFromIDR(taxIDR, currency);
+  const serviceAmount = convertFromIDR(serviceIDR, currency);
+  const grandTotal = convertFromIDR(grandTotalIDR, currency);
+
+  const targetDigits = Number(approvalDigits) === 4 ? 4 : 6;
   let paymentDetail = '';
   let finalApprovalCode = customApprovalCode.trim() || generateApprovalCode(targetDigits);
   let cryptoAmountUSDT = null;
@@ -200,15 +219,21 @@ app.post('/api/transactions/authorize', (req, res) => {
         message: 'Invalid TRON (TRC20) Transaction Hash. Minimum 16 hex characters required.'
       });
     }
-    cryptoAmountUSDT = Number((grandTotal / USDT_IDR_RATE).toFixed(2));
+    cryptoAmountUSDT = Number((grandTotalIDR / USDT_IDR_RATE).toFixed(2));
     paymentDetail = `TRC20 ${cryptoAmountUSDT} USDT | TxHash: ${cleanHash.slice(0, 8)}...${cleanHash.slice(-6)}`;
   }
 
-  // Kurangi stok
+  // Deduct stock
   items.forEach(cartItem => {
     const prod = db.products.find(p => p.id === cartItem.id);
     if (prod) prod.stock -= cartItem.qty;
   });
+
+  const formattedItems = items.map(i => ({
+    ...i,
+    unitPrice: convertFromIDR(i.priceIDR, currency),
+    lineTotal: convertFromIDR(i.priceIDR * i.qty, currency)
+  }));
 
   const txId = 'TX-' + Date.now() + '-' + crypto.randomBytes(2).toString('hex').toUpperCase();
   const effectiveMode = paymentMethod === 'CARD' ? mode : 'Online';
@@ -219,7 +244,7 @@ app.post('/api/transactions/authorize', (req, res) => {
     operator,
     paymentMethod,
     paymentDetail,
-    items,
+    items: formattedItems,
     subtotal,
     taxAmount,
     serviceAmount,
@@ -244,18 +269,15 @@ app.post('/api/transactions/authorize', (req, res) => {
 
 // Endpoint: Shift Close / Z-Report Summary
 app.post('/api/shift/close', (req, res) => {
-  const { operator = { id: 'OP-01', name: 'Razalee Syahdan' }, startingFloat = 500000 } = req.body;
+  const { operator = { id: 'OP-01', name: 'Razalee Syahdan' }, currency = 'EUR' } = req.body;
   const db = readDB();
 
-  const totalSales = db.transactions.reduce((acc, t) => acc + t.amount, 0);
   const shiftReport = {
     shiftId: 'SHIFT-' + Date.now(),
     operator,
     closedAt: new Date().toISOString(),
-    startingFloat,
     totalTransactions: db.transactions.length,
-    totalRevenue: totalSales,
-    drawerCashTotal: startingFloat + totalSales
+    currency
   };
 
   db.shifts.unshift(shiftReport);

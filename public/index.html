@@ -22,7 +22,6 @@
       margin: 0; background: var(--bg); color: var(--text);
       display: flex; justify-content: center; padding: 20px; min-height: 100vh;
     }
-    /* PIN LOCK OVERLAY */
     .lock-screen {
       position: fixed; inset: 0; background: rgba(7, 16, 20, 0.96); backdrop-filter: blur(8px);
       display: flex; align-items: center; justify-content: center; z-index: 999; padding: 20px;
@@ -43,12 +42,11 @@
     }
     .key-btn:hover { border-color: var(--accent); background: var(--accent-dim); }
 
-    /* MAIN POS CONTAINER */
-    .container { width: 100%; max-width: 960px; display: grid; grid-template-columns: 1.15fr 1fr; gap: 20px; }
+    .container { width: 100%; max-width: 980px; display: grid; grid-template-columns: 1.15fr 1fr; gap: 20px; }
     @media (max-width: 820px) { .container { grid-template-columns: 1fr; } .header { grid-column: span 1 !important; } }
 
     .header {
-      grid-column: span 2; display: flex; justify-content: space-between; align-items: center;
+      grid-column: span 2; display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 12px;
       background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 14px 18px;
     }
     .header-left { display: flex; align-items: center; gap: 12px; }
@@ -59,6 +57,12 @@
     .brand-title { font-weight: 800; letter-spacing: 0.5px; font-size: 16px; }
     .brand-title span { color: var(--accent); }
     .brand-sub { font-size: 10px; letter-spacing: 1.4px; color: var(--muted); text-transform: uppercase; }
+
+    .header-controls { display: flex; align-items: center; gap: 10px; }
+    .currency-select {
+      background: #081217; color: var(--accent); border: 1px solid var(--accent);
+      padding: 8px 12px; border-radius: 10px; font-size: 12px; font-weight: 700; outline: none; cursor: pointer;
+    }
     .operator-badge {
       display: flex; align-items: center; gap: 10px; background: #081217;
       border: 1px solid var(--border); padding: 8px 12px; border-radius: 10px; font-size: 12px;
@@ -90,8 +94,10 @@
     .option-box {
       border: 1px solid var(--border); border-radius: 10px; padding: 10px;
       cursor: pointer; transition: 0.2s; background: #0a1318; text-align: center; font-size: 12px; font-weight: 600;
+      display: flex; align-items: center; justify-content: center; gap: 6px;
     }
     .option-box.active { border-color: var(--accent); background: var(--accent-dim); color: var(--accent); }
+    .crypto-icon { width: 18px; height: 18px; object-fit: contain; }
 
     input {
       width: 100%; background: #081014; color: var(--text); border: 1px solid var(--border);
@@ -152,19 +158,26 @@
         <div class="logo">💳</div>
         <div>
           <div class="brand-title">KONGALI<span>POS</span> Hybrid Web3 & EDC</div>
-          <div class="brand-sub">Card 101.3/201.1 • QRIS • TRON TRC20 USDT</div>
+          <div class="brand-sub">Multi-Currency (EUR / USD / IDR) • Card • QRIS • Crypto</div>
         </div>
       </div>
-      <div class="operator-badge">
-        <div>
-          <div style="font-weight:700; color:var(--accent);" id="activeOpName">Locked</div>
-          <div style="font-size:10px; color:var(--muted);" id="activeOpRole">Operator</div>
+      <div class="header-controls">
+        <select id="currencySelector" class="currency-select" onchange="changeCurrency()">
+          <option value="EUR" selected>EUR (€) • Euro</option>
+          <option value="USD">USD ($) • US Dollar</option>
+          <option value="IDR">IDR (Rp) • Rupiah</option>
+        </select>
+        <div class="operator-badge">
+          <div>
+            <div style="font-weight:700; color:var(--accent);" id="activeOpName">Locked</div>
+            <div style="font-size:10px; color:var(--muted);" id="activeOpRole">Operator</div>
+          </div>
+          <button class="btn-lock" onclick="lockTerminal()">🔒 LOCK</button>
         </div>
-        <button class="btn-lock" onclick="lockTerminal()">🔒 LOCK</button>
       </div>
     </div>
 
-    <!-- KOLOM KIRI: Katalog, Keranjang & Shift -->
+    <!-- LEFT COLUMN: Catalog, Cart & Shift -->
     <div>
       <div class="panel">
         <span class="label">Merchandise Catalog & Live Stock</span>
@@ -178,10 +191,10 @@
         </div>
         <div class="cart-list" id="cartList"><div style="color:var(--muted); font-size:12px;">Cart is empty</div></div>
         <div style="font-size:12px; color:var(--muted); display:flex; justify-content:space-between;">
-          <span>Subtotal:</span> <span id="cartSubtotal">Rp 0</span>
+          <span>Subtotal:</span> <span id="cartSubtotal">€ 0.00</span>
         </div>
         <div style="font-size:13px; font-weight:800; color:var(--accent); display:flex; justify-content:space-between; margin-top:6px;">
-          <span>Est. Total (+11% Tax & 5% Svc):</span> <span id="cartGrandTotal">Rp 0</span>
+          <span>Est. Grand Total (+11% Tax & 5% Svc):</span> <span id="cartGrandTotal">€ 0.00</span>
         </div>
       </div>
 
@@ -194,14 +207,17 @@
       </div>
     </div>
 
-    <!-- KOLOM KANAN: Multi-Rail Payment & Receipt -->
+    <!-- RIGHT COLUMN: Multi-Rail Payment & Receipt -->
     <div>
       <div class="panel">
         <span class="label">Payment Rail Method</span>
         <div class="grid-3">
           <div class="option-box active" id="railCARD" onclick="setPaymentRail('CARD')">💳 Card EDC</div>
           <div class="option-box" id="railQRIS" onclick="setPaymentRail('QRIS')">📱 QRIS</div>
-          <div class="option-box" id="railTRC20" onclick="setPaymentRail('TRC20_USDT')">🪙 TRC20 USDT</div>
+          <div class="option-box" id="railTRC20" onclick="setPaymentRail('TRC20_USDT')">
+            <img src="https://cryptologos.cc/logos/bitcoin-btc-logo.svg?v=040" alt="Crypto" class="crypto-icon" />
+            <span>Crypto</span>
+          </div>
         </div>
       </div>
 
@@ -242,8 +258,12 @@
       <!-- SECTION: CRYPTO TRC20 USDT -->
       <div id="sectionTRC20" style="display:none;">
         <div class="panel">
-          <span class="label">TRON (TRC20) USDT Settlement</span>
-          <button class="btn-secondary" onclick="generateInvoice('TRC20_USDT')">🪙 CALCULATE USDT & SHOW WALLET</button>
+          <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+            <img src="https://cryptologos.cc/logos/bitcoin-btc-logo.svg?v=040" alt="Bitcoin" class="crypto-icon" />
+            <img src="https://cryptologos.cc/logos/tether-usdt-logo.svg?v=040" alt="USDT" class="crypto-icon" />
+            <span class="label" style="margin:0;">TRON (TRC20) USDT Settlement</span>
+          </div>
+          <button class="btn-secondary" onclick="generateInvoice('TRC20_USDT')">⚡ CALCULATE USDT & SHOW WALLET</button>
           <div id="cryptoInvoiceArea"></div>
           <input type="text" id="cryptoTxHash" placeholder="Paste TRON TxID / Hash (min 16 chars)..." />
         </div>
@@ -260,11 +280,35 @@
     let activeOperator = null;
     let products = [];
     let cart = [];
+    let selectedCurrency = 'EUR';
+    let fxRates = { IDR: 1, USD: 16250, EUR: 17600 };
     let selectedRail = 'CARD';
     let selectedMode = 'Online';
     let selectedProtocol = '101.3';
     let selectedApprovalDigits = 6;
     let activeQrisRef = '';
+
+    function formatMoney(amountIDR, curr = selectedCurrency) {
+      const rate = fxRates[curr] || 1;
+      if (curr === 'IDR') {
+        return 'Rp ' + Math.round(amountIDR).toLocaleString('en-US');
+      }
+      const val = amountIDR / rate;
+      const sym = curr === 'EUR' ? '€ ' : '$ ';
+      return sym + val.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
+    function formatDirect(amount, curr) {
+      if (curr === 'IDR') return 'Rp ' + Math.round(amount).toLocaleString('en-US');
+      const sym = curr === 'EUR' ? '€ ' : '$ ';
+      return sym + Number(amount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
+    function changeCurrency() {
+      selectedCurrency = document.getElementById('currencySelector').value;
+      renderProducts();
+      renderCart();
+    }
 
     // PIN KEYPAD LOGIC
     function pressPin(num) {
@@ -307,14 +351,16 @@
       const res = await fetch('/api/pos/data');
       const data = await res.json();
       products = data.products;
+      if (data.fxRates) fxRates = data.fxRates;
       renderProducts();
+      renderCart();
     }
 
     function renderProducts() {
       document.getElementById('productGrid').innerHTML = products.map(p => `
         <div class="prod-card" onclick="addToCart('${p.id}')">
           <div class="prod-name">${p.name}</div>
-          <div class="prod-price">Rp ${p.price.toLocaleString('id-ID')}</div>
+          <div class="prod-price">${formatMoney(p.priceIDR)}</div>
           <div class="prod-stock">Stock: ${p.stock} units</div>
         </div>
       `).join('');
@@ -325,10 +371,10 @@
       if (!p || p.stock <= 0) return alert('Out of stock!');
       const existing = cart.find(x => x.id === id);
       if (existing) {
-        if (existing.qty >= p.stock) return alert('Max stock reached');
+        if (existing.qty >= p.stock) return alert('Maximum available stock reached');
         existing.qty++;
       } else {
-        cart.push({ id: p.id, name: p.name, price: p.price, qty: 1 });
+        cart.push({ id: p.id, name: p.name, priceIDR: p.priceIDR, qty: 1 });
       }
       renderCart();
     }
@@ -342,18 +388,18 @@
       const list = document.getElementById('cartList');
       if (cart.length === 0) {
         list.innerHTML = '<div style="color:var(--muted); font-size:12px;">Cart is empty</div>';
-        document.getElementById('cartSubtotal').innerText = 'Rp 0';
-        document.getElementById('cartGrandTotal').innerText = 'Rp 0';
+        document.getElementById('cartSubtotal').innerText = formatMoney(0);
+        document.getElementById('cartGrandTotal').innerText = formatMoney(0);
         return;
       }
-      let subtotal = 0;
+      let subtotalIDR = 0;
       list.innerHTML = cart.map(item => {
-        subtotal += item.price * item.qty;
-        return `<div class="cart-item"><span>${item.name} (x${item.qty})</span><span>Rp ${(item.price * item.qty).toLocaleString('id-ID')}</span></div>`;
+        subtotalIDR += item.priceIDR * item.qty;
+        return `<div class="cart-item"><span>${item.name} (x${item.qty})</span><span>${formatMoney(item.priceIDR * item.qty)}</span></div>`;
       }).join('');
-      const grandTotal = subtotal * 1.16;
-      document.getElementById('cartSubtotal').innerText = 'Rp ' + subtotal.toLocaleString('id-ID');
-      document.getElementById('cartGrandTotal').innerText = 'Rp ' + grandTotal.toLocaleString('id-ID');
+      const grandTotalIDR = subtotalIDR * 1.16;
+      document.getElementById('cartSubtotal').innerText = formatMoney(subtotalIDR);
+      document.getElementById('cartGrandTotal').innerText = formatMoney(grandTotalIDR);
     }
 
     function setPaymentRail(rail) {
@@ -390,11 +436,11 @@
     }
 
     async function generateInvoice(method) {
-      if (cart.length === 0) return alert('Add items to cart first.');
+      if (cart.length === 0) return alert('Please add items to cart first.');
       const res = await fetch('/api/payments/invoice', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ items: cart, method })
+        body: JSON.stringify({ items: cart, currency: selectedCurrency, method })
       });
       const data = await res.json();
       if (!data.success) return alert(data.message);
@@ -404,28 +450,31 @@
         document.getElementById('qrisInvoiceArea').innerHTML = `
           <div class="invoice-box">
             <div style="color:var(--accent); font-weight:bold;">QRIS INVOICE: ${data.invoiceRef}</div>
-            <div>Total Tagihan: <strong>Rp ${data.grandTotalIDR.toLocaleString('id-ID')}</strong></div>
+            <div>Total Payable: <strong>${formatDirect(data.grandTotalSelected, data.currency)}</strong> (IDR ${data.grandTotalIDR.toLocaleString('en-US')})</div>
             <div style="font-size:10px; color:var(--muted); margin-top:6px;">EMVCo String: ${data.qrisPayload}</div>
           </div>`;
       } else {
         document.getElementById('cryptoInvoiceArea').innerHTML = `
           <div class="invoice-box">
-            <div style="color:var(--warning); font-weight:bold;">SEND EXACT: ${data.amountUSDT} USDT (${data.network})</div>
-            <div>IDR Equivalent: Rp ${data.grandTotalIDR.toLocaleString('id-ID')} (@ Rp ${data.rate.toLocaleString('id-ID')})</div>
+            <div style="display:flex; align-items:center; gap:6px; color:var(--warning); font-weight:bold;">
+              <img src="https://cryptologos.cc/logos/tether-usdt-logo.svg?v=040" alt="USDT" class="crypto-icon" />
+              <span>SEND EXACT: ${data.amountUSDT} USDT (${data.network})</span>
+            </div>
+            <div style="margin-top:4px;">Order Total: <strong>${formatDirect(data.grandTotalSelected, data.currency)}</strong></div>
             <div style="margin-top:6px; font-family:monospace; color:var(--accent);">Wallet: ${data.walletAddress}</div>
           </div>`;
       }
     }
 
     async function processPayment() {
-      if (!activeOperator) return alert('Terminal locked! Login first.');
+      if (!activeOperator) return alert('Terminal is locked! Please log in first.');
       if (cart.length === 0) return alert('Please add items to cart first.');
 
       const payload = {
         operator: activeOperator,
         paymentMethod: selectedRail,
         items: cart,
-        currency: 'IDR',
+        currency: selectedCurrency,
         mode: selectedMode,
         protocol: selectedProtocol,
         cardNumber: document.getElementById('cardNumber').value,
@@ -446,23 +495,25 @@
 
       if (data.success) {
         const tx = data.transaction;
-        let itemsHtml = tx.items.map(i => `<div class="receipt-row"><span>${i.name} x${i.qty}</span><span>Rp ${(i.price * i.qty).toLocaleString('id-ID')}</span></div>`).join('');
+        let itemsHtml = tx.items.map(i => `<div class="receipt-row"><span>${i.name} x${i.qty}</span><span>${formatDirect(i.lineTotal, tx.currency)}</span></div>`).join('');
         box.innerHTML = `
-          <div class="receipt-title">KONGALIPOS HYBRID RECEIPT</div>
+          <div class="receipt-title">KONGALIPOS MERCHANT RECEIPT</div>
           <div class="receipt-row"><span>TX ID:</span><span>${tx.id}</span></div>
           <div class="receipt-row"><span>OPERATOR:</span><span>${tx.operator.name} (${tx.operator.id})</span></div>
-          <div class="receipt-row"><span>DATE:</span><span>${new Date(tx.timestamp).toLocaleString()}</span></div>
+          <div class="receipt-row"><span>DATE:</span><span>${new Date(tx.timestamp).toLocaleString('en-US')}</span></div>
+          <div class="receipt-row"><span>CURRENCY:</span><span>${tx.currency}</span></div>
           <div style="border-top:1px dashed var(--accent); margin:6px 0;"></div>
           ${itemsHtml}
           <div style="border-top:1px dashed var(--accent); margin:6px 0;"></div>
-          <div class="receipt-row"><span>SUBTOTAL:</span><span>Rp ${tx.subtotal.toLocaleString('id-ID')}</span></div>
-          <div class="receipt-row"><span>TAX (11%) + SVC (5%):</span><span>Rp ${(tx.taxAmount + tx.serviceAmount).toLocaleString('id-ID')}</span></div>
-          <div class="receipt-row" style="font-weight:bold; color:var(--accent);"><span>GRAND TOTAL:</span><span>Rp ${tx.amount.toLocaleString('id-ID')}</span></div>
+          <div class="receipt-row"><span>SUBTOTAL:</span><span>${formatDirect(tx.subtotal, tx.currency)}</span></div>
+          <div class="receipt-row"><span>TAX (11%) + SVC (5%):</span><span>${formatDirect(tx.taxAmount + tx.serviceAmount, tx.currency)}</span></div>
+          <div class="receipt-row" style="font-weight:bold; color:var(--accent);"><span>GRAND TOTAL:</span><span>${formatDirect(tx.amount, tx.currency)}</span></div>
           ${tx.cryptoAmountUSDT ? `<div class="receipt-row" style="color:var(--warning);"><span>CRYPTO SETTLED:</span><span>${tx.cryptoAmountUSDT} USDT (TRC20)</span></div>` : ''}
           <div style="border-top:1px dashed var(--accent); margin:6px 0;"></div>
           <div class="receipt-row"><span>METHOD:</span><span>${tx.paymentDetail}</span></div>
           <div class="receipt-row"><span>STATUS:</span><strong style="color:var(--success)">${tx.status}</strong></div>
           <div class="receipt-row"><span>APPROVAL CODE:</span><strong>${tx.approvalCode}</strong></div>
+          <div style="text-align:center; margin-top:10px; font-size:10px; color:var(--muted);">*** THANK YOU FOR YOUR BUSINESS ***</div>
         `;
         cart = [];
         activeQrisRef = '';
@@ -479,11 +530,11 @@
       const res = await fetch('/api/shift/close', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ operator: activeOperator, startingFloat: 500000 })
+        body: JSON.stringify({ operator: activeOperator, currency: selectedCurrency })
       });
       const data = await res.json();
       if (data.success) {
-        alert(`Z-Report Closed by ${data.report.operator.name}\nShift ID: ${data.report.shiftId}\nTransactions: ${data.report.totalTransactions}\nRevenue: Rp ${data.report.totalRevenue.toLocaleString('id-ID')}`);
+        alert(`Z-Report Closed by ${data.report.operator.name}\nShift ID: ${data.report.shiftId}\nTotal Transactions: ${data.report.totalTransactions}`);
       }
     }
 
