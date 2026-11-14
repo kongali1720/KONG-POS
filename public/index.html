@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>KONGALIPOS — Enterprise POS Terminal</title>
+  <title>KONGALIPOS — Hybrid Web3 & Enterprise POS</title>
   <style>
     :root {
       --bg: #071014;
@@ -14,33 +14,68 @@
       --text: #f1f5f9;
       --muted: #64748b;
       --success: #10b981;
+      --warning: #f59e0b;
       --danger: #ef4444;
     }
     * { box-sizing: border-box; font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; }
     body {
       margin: 0; background: var(--bg); color: var(--text);
-      display: flex; justify-content: center; padding: 20px;
+      display: flex; justify-content: center; padding: 20px; min-height: 100vh;
     }
-    .container { width: 100%; max-width: 900px; display: grid; grid-template-columns: 1.2fr 1fr; gap: 20px; }
-    @media (max-width: 768px) { .container { grid-template-columns: 1fr; } }
-    
-    .panel {
-      background: var(--card); border: 1px solid var(--border);
-      border-radius: 14px; padding: 16px; margin-bottom: 14px;
+    /* PIN LOCK OVERLAY */
+    .lock-screen {
+      position: fixed; inset: 0; background: rgba(7, 16, 20, 0.96); backdrop-filter: blur(8px);
+      display: flex; align-items: center; justify-content: center; z-index: 999; padding: 20px;
     }
-    .header { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; grid-column: span 2; }
+    .lock-box {
+      background: var(--card); border: 1px solid var(--accent); border-radius: 16px;
+      padding: 28px; width: 100%; max-width: 360px; text-align: center;
+    }
+    .pin-display {
+      background: #060d11; border: 1px solid var(--border); border-radius: 10px;
+      padding: 14px; font-size: 26px; letter-spacing: 10px; font-family: monospace;
+      color: var(--accent); margin: 16px 0; min-height: 58px;
+    }
+    .keypad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+    .key-btn {
+      background: #0a1419; border: 1px solid var(--border); color: var(--text);
+      padding: 14px; border-radius: 10px; font-size: 18px; font-weight: 700; cursor: pointer;
+    }
+    .key-btn:hover { border-color: var(--accent); background: var(--accent-dim); }
+
+    /* MAIN POS CONTAINER */
+    .container { width: 100%; max-width: 960px; display: grid; grid-template-columns: 1.15fr 1fr; gap: 20px; }
+    @media (max-width: 820px) { .container { grid-template-columns: 1fr; } .header { grid-column: span 1 !important; } }
+
+    .header {
+      grid-column: span 2; display: flex; justify-content: space-between; align-items: center;
+      background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 14px 18px;
+    }
+    .header-left { display: flex; align-items: center; gap: 12px; }
     .logo {
-      width: 44px; height: 44px; border-radius: 10px; background: var(--accent);
+      width: 42px; height: 42px; border-radius: 10px; background: var(--accent);
       display: flex; align-items: center; justify-content: center; color: #041014; font-weight: 800; font-size: 20px;
     }
     .brand-title { font-weight: 800; letter-spacing: 0.5px; font-size: 16px; }
     .brand-title span { color: var(--accent); }
-    .brand-sub { font-size: 10px; letter-spacing: 1.5px; color: var(--muted); text-transform: uppercase; }
-    
-    .label { font-size: 10px; letter-spacing: 1.4px; color: var(--muted); text-transform: uppercase; margin-bottom: 6px; display: block; }
-    .product-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; }
+    .brand-sub { font-size: 10px; letter-spacing: 1.4px; color: var(--muted); text-transform: uppercase; }
+    .operator-badge {
+      display: flex; align-items: center; gap: 10px; background: #081217;
+      border: 1px solid var(--border); padding: 8px 12px; border-radius: 10px; font-size: 12px;
+    }
+    .btn-lock {
+      background: rgba(239, 68, 68, 0.15); color: var(--danger); border: 1px solid var(--danger);
+      padding: 6px 10px; border-radius: 8px; font-size: 11px; font-weight: 700; cursor: pointer;
+    }
+
+    .panel {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 14px; padding: 16px; margin-bottom: 14px;
+    }
+    .label { font-size: 10px; letter-spacing: 1.4px; color: var(--muted); text-transform: uppercase; margin-bottom: 8px; display: block; }
+    .product-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
     .prod-card {
-      background: #0a1419; border: 1px solid var(--border); border-radius: 10px; padding: 10px; cursor: pointer; transition: 0.2s;
+      background: #0a1419; border: 1px solid var(--border); border-radius: 10px; padding: 12px; cursor: pointer; transition: 0.2s;
     }
     .prod-card:hover { border-color: var(--accent); }
     .prod-name { font-weight: 700; font-size: 13px; margin-bottom: 4px; }
@@ -48,117 +83,226 @@
     .prod-stock { font-size: 10px; color: var(--muted); margin-top: 4px; }
 
     .cart-list { max-height: 150px; overflow-y: auto; margin-bottom: 10px; }
-    .cart-item { display: flex; justify-content: space-between; font-size: 12px; padding: 4px 0; border-bottom: 1px solid var(--border); }
-    
-    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 6px; }
+    .cart-item { display: flex; justify-content: space-between; font-size: 12px; padding: 6px 0; border-bottom: 1px solid var(--border); }
+
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
     .option-box {
       border: 1px solid var(--border); border-radius: 10px; padding: 10px;
-      cursor: pointer; transition: 0.2s; background: #0a1318; text-align: center; font-size: 12px;
+      cursor: pointer; transition: 0.2s; background: #0a1318; text-align: center; font-size: 12px; font-weight: 600;
     }
-    .option-box.active { border-color: var(--accent); background: var(--accent-dim); }
-    
-    input, select {
-      width: 100%; background: #0a1419; color: var(--text); border: 1px solid var(--border);
-      padding: 10px; border-radius: 8px; font-size: 13px; outline: none; margin-top: 6px;
-    }
-    input.card-input { font-family: monospace; letter-spacing: 1px; }
+    .option-box.active { border-color: var(--accent); background: var(--accent-dim); color: var(--accent); }
 
+    input {
+      width: 100%; background: #081014; color: var(--text); border: 1px solid var(--border);
+      padding: 11px; border-radius: 8px; font-size: 13px; outline: none; margin-top: 6px; font-family: monospace;
+    }
     .btn-primary {
       width: 100%; background: var(--accent); color: #041014; border: none;
       border-radius: 12px; padding: 14px; font-weight: 800; font-size: 14px;
-      cursor: pointer; margin-top: 10px; letter-spacing: 0.5px;
+      cursor: pointer; margin-top: 8px; letter-spacing: 0.5px;
     }
     .btn-secondary {
       width: 100%; background: transparent; color: var(--accent); border: 1px solid var(--accent);
       border-radius: 10px; padding: 10px; font-weight: 600; font-size: 12px;
-      cursor: pointer; margin-top: 6px;
+      cursor: pointer; margin-top: 8px;
     }
-
+    .invoice-box {
+      background: #071217; border: 1px solid var(--accent); border-radius: 10px;
+      padding: 12px; margin-top: 10px; font-size: 12px; word-break: break-all;
+    }
     .receipt {
       background: #050d11; border: 1px dashed var(--accent);
       border-radius: 12px; padding: 14px; margin-top: 14px; font-family: monospace; font-size: 11px;
     }
     .receipt-title { text-align: center; font-weight: bold; font-size: 13px; margin-bottom: 8px; color: var(--accent); }
-    .receipt-row { display: flex; justify-content: space-between; margin-bottom: 4px; }
+    .receipt-row { display: flex; justify-content: space-between; margin-bottom: 4px; gap: 8px; }
   </style>
 </head>
 <body>
+
+  <!-- MULTI-OPERATOR PIN LOCK SCREEN -->
+  <div class="lock-screen" id="lockScreen">
+    <div class="lock-box">
+      <div style="font-size:28px; margin-bottom:6px;">🔐</div>
+      <div class="brand-title">KONGALI<span>POS</span> TERMINAL LOCK</div>
+      <div style="font-size:11px; color:var(--muted); margin-top:4px;">Enter Operator PIN (Demo: 1720 or 1234)</div>
+      <div class="pin-display" id="pinDisplay">••••</div>
+      <div class="keypad">
+        <button class="key-btn" onclick="pressPin('1')">1</button>
+        <button class="key-btn" onclick="pressPin('2')">2</button>
+        <button class="key-btn" onclick="pressPin('3')">3</button>
+        <button class="key-btn" onclick="pressPin('4')">4</button>
+        <button class="key-btn" onclick="pressPin('5')">5</button>
+        <button class="key-btn" onclick="pressPin('6')">6</button>
+        <button class="key-btn" onclick="pressPin('7')">7</button>
+        <button class="key-btn" onclick="pressPin('8')">8</button>
+        <button class="key-btn" onclick="pressPin('9')">9</button>
+        <button class="key-btn" style="color:var(--danger)" onclick="clearPin()">C</button>
+        <button class="key-btn" onclick="pressPin('0')">0</button>
+        <button class="key-btn" style="background:var(--accent); color:#041014;" onclick="submitPin()">OK</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MAIN POS CONSOLE -->
   <div class="container">
     <div class="header">
-      <div class="logo">💳</div>
-      <div>
-        <div class="brand-title">KONGALI<span>POS</span> Enterprise Suite</div>
-        <div class="brand-sub">Advanced POS Terminal, ESC/POS & Shift Management</div>
+      <div class="header-left">
+        <div class="logo">💳</div>
+        <div>
+          <div class="brand-title">KONGALI<span>POS</span> Hybrid Web3 & EDC</div>
+          <div class="brand-sub">Card 101.3/201.1 • QRIS • TRON TRC20 USDT</div>
+        </div>
+      </div>
+      <div class="operator-badge">
+        <div>
+          <div style="font-weight:700; color:var(--accent);" id="activeOpName">Locked</div>
+          <div style="font-size:10px; color:var(--muted);" id="activeOpRole">Operator</div>
+        </div>
+        <button class="btn-lock" onclick="lockTerminal()">🔒 LOCK</button>
       </div>
     </div>
 
-    <!-- KOLOM KIRI: Katalog & Keranjang -->
+    <!-- KOLOM KIRI: Katalog, Keranjang & Shift -->
     <div>
       <div class="panel">
-        <span class="label">Merchandise Catalog & Stock</span>
+        <span class="label">Merchandise Catalog & Live Stock</span>
         <div class="product-grid" id="productGrid"></div>
       </div>
 
       <div class="panel">
-        <span class="label">Current Cart</span>
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <span class="label">Current Order Cart</span>
+          <span style="font-size:11px; color:var(--danger); cursor:pointer;" onclick="clearCart()">Clear Cart</span>
+        </div>
         <div class="cart-list" id="cartList"><div style="color:var(--muted); font-size:12px;">Cart is empty</div></div>
-        <div style="font-size: 13px; font-weight:bold; display:flex; justify-content:space-between; margin-top:8px;">
+        <div style="font-size:12px; color:var(--muted); display:flex; justify-content:space-between;">
           <span>Subtotal:</span> <span id="cartSubtotal">Rp 0</span>
+        </div>
+        <div style="font-size:13px; font-weight:800; color:var(--accent); display:flex; justify-content:space-between; margin-top:6px;">
+          <span>Est. Total (+11% Tax & 5% Svc):</span> <span id="cartGrandTotal">Rp 0</span>
         </div>
       </div>
 
       <div class="panel">
-        <span class="label">Shift & Cash Drawer (Z-Report)</span>
-        <button class="btn-secondary" onclick="closeShift()">🔒 CLOSE SHIFT / Z-REPORT</button>
+        <span class="label">Shift Management & Store-and-Forward</span>
+        <div class="grid-2">
+          <button class="btn-secondary" onclick="closeShift()">📊 Z-REPORT / CLOSE SHIFT</button>
+          <button class="btn-secondary" onclick="syncOffline()">🔄 SYNC OFFLINE QUEUE</button>
+        </div>
       </div>
     </div>
 
-    <!-- KOLOM KANAN: Pembayaran, Protokol & Struk ESC/POS -->
+    <!-- KOLOM KANAN: Multi-Rail Payment & Receipt -->
     <div>
       <div class="panel">
-        <span class="label">Connection & Mode</span>
-        <div class="grid-2">
-          <div class="option-box active" id="modeOnline" onclick="setMode('Online')">📡 Online Auth</div>
-          <div class="option-box" id="modeOffline" onclick="setMode('Offline')">📴 Offline Store & Forward</div>
+        <span class="label">Payment Rail Method</span>
+        <div class="grid-3">
+          <div class="option-box active" id="railCARD" onclick="setPaymentRail('CARD')">💳 Card EDC</div>
+          <div class="option-box" id="railQRIS" onclick="setPaymentRail('QRIS')">📱 QRIS</div>
+          <div class="option-box" id="railTRC20" onclick="setPaymentRail('TRC20_USDT')">🪙 TRC20 USDT</div>
         </div>
       </div>
 
-      <div class="panel">
-        <span class="label">Protocol Version</span>
-        <div class="grid-2">
-          <div class="option-box active" id="proto101" onclick="setProtocol('101.3')">101.3 Standard</div>
-          <div class="option-box" id="proto201" onclick="setProtocol('201.1')">201.1 Extended</div>
+      <!-- SECTION: CARD EDC -->
+      <div id="sectionCARD">
+        <div class="panel">
+          <span class="label">Connection Mode & Protocol</span>
+          <div class="grid-2" style="margin-bottom:8px;">
+            <div class="option-box active" id="modeOnline" onclick="setMode('Online')">📡 Online Auth</div>
+            <div class="option-box" id="modeOffline" onclick="setMode('Offline')">📴 Offline Queue</div>
+          </div>
+          <div class="grid-2">
+            <div class="option-box active" id="proto101" onclick="setProtocol('101.3')">101.3 Standard</div>
+            <div class="option-box" id="proto201" onclick="setProtocol('201.1')">201.1 Extended</div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <span class="label">Approval Code (4-Digit / 6-Digit) & Card</span>
+          <div class="grid-2">
+            <div class="option-box" id="app4" onclick="setApprovalDigits(4)">4-Digit Auth</div>
+            <div class="option-box active" id="app6" onclick="setApprovalDigits(6)">6-Digit ISO</div>
+          </div>
+          <input type="text" id="customApprovalCode" placeholder="Auto-generate or enter 6 digits" maxlength="6" oninput="this.value=this.value.replace(/[^0-9]/g,'')" />
+          <input type="text" id="cardNumber" value="4242 4242 4242 4242" maxlength="19" />
         </div>
       </div>
 
-      <div class="panel">
-        <span class="label">Approval Code Format</span>
-        <div class="grid-2">
-          <div class="option-box" id="app4" onclick="setApprovalDigits(4)">4-Digit Code</div>
-          <div class="option-box active" id="app6" onclick="setApprovalDigits(6)">6-Digit ISO</div>
+      <!-- SECTION: QRIS -->
+      <div id="sectionQRIS" style="display:none;">
+        <div class="panel">
+          <span class="label">Dynamic QRIS Payment</span>
+          <button class="btn-secondary" onclick="generateInvoice('QRIS')">⚡ GENERATE DYNAMIC QRIS PAYLOAD</button>
+          <div id="qrisInvoiceArea"></div>
         </div>
-        <input type="text" id="customApprovalCode" class="card-input" placeholder="Auto or enter code" maxlength="6" />
       </div>
 
-      <div class="panel">
-        <span class="label">Card Number (Demo)</span>
-        <input type="text" id="cardNumber" class="card-input" value="4242 4242 4242 4242" maxlength="19" />
+      <!-- SECTION: CRYPTO TRC20 USDT -->
+      <div id="sectionTRC20" style="display:none;">
+        <div class="panel">
+          <span class="label">TRON (TRC20) USDT Settlement</span>
+          <button class="btn-secondary" onclick="generateInvoice('TRC20_USDT')">🪙 CALCULATE USDT & SHOW WALLET</button>
+          <div id="cryptoInvoiceArea"></div>
+          <input type="text" id="cryptoTxHash" placeholder="Paste TRON TxID / Hash (min 16 chars)..." />
+        </div>
       </div>
 
-      <button class="btn-primary" onclick="processPayment()">⚡ AUTHORIZE & PRINT RECEIPT</button>
-      <button class="btn-secondary" onclick="syncOffline()">🔄 SYNC OFFLINE QUEUE</button>
+      <button class="btn-primary" onclick="processPayment()">✅ CONFIRM SETTLEMENT & PRINT RECEIPT</button>
 
       <div class="receipt" id="receiptBox" style="display:none;"></div>
     </div>
   </div>
 
   <script>
+    let pinBuffer = '';
+    let activeOperator = null;
     let products = [];
     let cart = [];
+    let selectedRail = 'CARD';
     let selectedMode = 'Online';
     let selectedProtocol = '101.3';
     let selectedApprovalDigits = 6;
+    let activeQrisRef = '';
 
+    // PIN KEYPAD LOGIC
+    function pressPin(num) {
+      if (pinBuffer.length < 6) {
+        pinBuffer += num;
+        document.getElementById('pinDisplay').innerText = '*'.repeat(pinBuffer.length);
+      }
+    }
+    function clearPin() {
+      pinBuffer = '';
+      document.getElementById('pinDisplay').innerText = '••••';
+    }
+    async function submitPin() {
+      const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pin: pinBuffer })
+      });
+      const data = await res.json();
+      if (data.success) {
+        activeOperator = data.operator;
+        document.getElementById('activeOpName').innerText = `${activeOperator.name} (${activeOperator.id})`;
+        document.getElementById('activeOpRole').innerText = activeOperator.role;
+        document.getElementById('lockScreen').style.display = 'none';
+        clearPin();
+        loadData();
+      } else {
+        alert(data.message);
+        clearPin();
+      }
+    }
+    function lockTerminal() {
+      activeOperator = null;
+      clearPin();
+      document.getElementById('lockScreen').style.display = 'flex';
+    }
+
+    // POS DATA & CART
     async function loadData() {
       const res = await fetch('/api/pos/data');
       const data = await res.json();
@@ -167,8 +311,7 @@
     }
 
     function renderProducts() {
-      const grid = document.getElementById('productGrid');
-      grid.innerHTML = products.map(p => `
+      document.getElementById('productGrid').innerHTML = products.map(p => `
         <div class="prod-card" onclick="addToCart('${p.id}')">
           <div class="prod-name">${p.name}</div>
           <div class="prod-price">Rp ${p.price.toLocaleString('id-ID')}</div>
@@ -190,11 +333,17 @@
       renderCart();
     }
 
+    function clearCart() {
+      cart = [];
+      renderCart();
+    }
+
     function renderCart() {
       const list = document.getElementById('cartList');
       if (cart.length === 0) {
         list.innerHTML = '<div style="color:var(--muted); font-size:12px;">Cart is empty</div>';
         document.getElementById('cartSubtotal').innerText = 'Rp 0';
+        document.getElementById('cartGrandTotal').innerText = 'Rp 0';
         return;
       }
       let subtotal = 0;
@@ -202,7 +351,20 @@
         subtotal += item.price * item.qty;
         return `<div class="cart-item"><span>${item.name} (x${item.qty})</span><span>Rp ${(item.price * item.qty).toLocaleString('id-ID')}</span></div>`;
       }).join('');
+      const grandTotal = subtotal * 1.16;
       document.getElementById('cartSubtotal').innerText = 'Rp ' + subtotal.toLocaleString('id-ID');
+      document.getElementById('cartGrandTotal').innerText = 'Rp ' + grandTotal.toLocaleString('id-ID');
+    }
+
+    function setPaymentRail(rail) {
+      selectedRail = rail;
+      document.getElementById('railCARD').classList.toggle('active', rail === 'CARD');
+      document.getElementById('railQRIS').classList.toggle('active', rail === 'QRIS');
+      document.getElementById('railTRC20').classList.toggle('active', rail === 'TRC20_USDT');
+
+      document.getElementById('sectionCARD').style.display = rail === 'CARD' ? 'block' : 'none';
+      document.getElementById('sectionQRIS').style.display = rail === 'QRIS' ? 'block' : 'none';
+      document.getElementById('sectionTRC20').style.display = rail === 'TRC20_USDT' ? 'block' : 'none';
     }
 
     function setMode(m) {
@@ -223,12 +385,45 @@
       document.getElementById('app6').classList.toggle('active', d === 6);
       const input = document.getElementById('customApprovalCode');
       input.maxLength = d;
-      input.placeholder = `Auto or enter ${d} digits`;
+      input.value = input.value.slice(0, d);
+      input.placeholder = `Auto-generate or enter ${d} digits`;
+    }
+
+    async function generateInvoice(method) {
+      if (cart.length === 0) return alert('Add items to cart first.');
+      const res = await fetch('/api/payments/invoice', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ items: cart, method })
+      });
+      const data = await res.json();
+      if (!data.success) return alert(data.message);
+
+      if (method === 'QRIS') {
+        activeQrisRef = data.invoiceRef;
+        document.getElementById('qrisInvoiceArea').innerHTML = `
+          <div class="invoice-box">
+            <div style="color:var(--accent); font-weight:bold;">QRIS INVOICE: ${data.invoiceRef}</div>
+            <div>Total Tagihan: <strong>Rp ${data.grandTotalIDR.toLocaleString('id-ID')}</strong></div>
+            <div style="font-size:10px; color:var(--muted); margin-top:6px;">EMVCo String: ${data.qrisPayload}</div>
+          </div>`;
+      } else {
+        document.getElementById('cryptoInvoiceArea').innerHTML = `
+          <div class="invoice-box">
+            <div style="color:var(--warning); font-weight:bold;">SEND EXACT: ${data.amountUSDT} USDT (${data.network})</div>
+            <div>IDR Equivalent: Rp ${data.grandTotalIDR.toLocaleString('id-ID')} (@ Rp ${data.rate.toLocaleString('id-ID')})</div>
+            <div style="margin-top:6px; font-family:monospace; color:var(--accent);">Wallet: ${data.walletAddress}</div>
+          </div>`;
+      }
     }
 
     async function processPayment() {
+      if (!activeOperator) return alert('Terminal locked! Login first.');
       if (cart.length === 0) return alert('Please add items to cart first.');
+
       const payload = {
+        operator: activeOperator,
+        paymentMethod: selectedRail,
         items: cart,
         currency: 'IDR',
         mode: selectedMode,
@@ -236,8 +431,8 @@
         cardNumber: document.getElementById('cardNumber').value,
         approvalDigits: selectedApprovalDigits,
         customApprovalCode: document.getElementById('customApprovalCode').value,
-        taxRate: 11,
-        serviceRate: 5
+        cryptoTxHash: document.getElementById('cryptoTxHash').value,
+        qrisRef: activeQrisRef
       };
 
       const res = await fetch('/api/transactions/authorize', {
@@ -253,23 +448,25 @@
         const tx = data.transaction;
         let itemsHtml = tx.items.map(i => `<div class="receipt-row"><span>${i.name} x${i.qty}</span><span>Rp ${(i.price * i.qty).toLocaleString('id-ID')}</span></div>`).join('');
         box.innerHTML = `
-          <div class="receipt-title">KONGALIPOS MERCHANT TICKET</div>
+          <div class="receipt-title">KONGALIPOS HYBRID RECEIPT</div>
           <div class="receipt-row"><span>TX ID:</span><span>${tx.id}</span></div>
+          <div class="receipt-row"><span>OPERATOR:</span><span>${tx.operator.name} (${tx.operator.id})</span></div>
           <div class="receipt-row"><span>DATE:</span><span>${new Date(tx.timestamp).toLocaleString()}</span></div>
-          <div style="border-top:1px dashed var(--accent); margin: 6px 0;"></div>
+          <div style="border-top:1px dashed var(--accent); margin:6px 0;"></div>
           ${itemsHtml}
-          <div style="border-top:1px dashed var(--accent); margin: 6px 0;"></div>
+          <div style="border-top:1px dashed var(--accent); margin:6px 0;"></div>
           <div class="receipt-row"><span>SUBTOTAL:</span><span>Rp ${tx.subtotal.toLocaleString('id-ID')}</span></div>
-          <div class="receipt-row"><span>TAX (11%):</span><span>Rp ${tx.taxAmount.toLocaleString('id-ID')}</span></div>
-          <div class="receipt-row"><span>SERVICE (5%):</span><span>Rp ${tx.serviceAmount.toLocaleString('id-ID')}</span></div>
+          <div class="receipt-row"><span>TAX (11%) + SVC (5%):</span><span>Rp ${(tx.taxAmount + tx.serviceAmount).toLocaleString('id-ID')}</span></div>
           <div class="receipt-row" style="font-weight:bold; color:var(--accent);"><span>GRAND TOTAL:</span><span>Rp ${tx.amount.toLocaleString('id-ID')}</span></div>
-          <div style="border-top:1px dashed var(--accent); margin: 6px 0;"></div>
+          ${tx.cryptoAmountUSDT ? `<div class="receipt-row" style="color:var(--warning);"><span>CRYPTO SETTLED:</span><span>${tx.cryptoAmountUSDT} USDT (TRC20)</span></div>` : ''}
+          <div style="border-top:1px dashed var(--accent); margin:6px 0;"></div>
+          <div class="receipt-row"><span>METHOD:</span><span>${tx.paymentDetail}</span></div>
           <div class="receipt-row"><span>STATUS:</span><strong style="color:var(--success)">${tx.status}</strong></div>
           <div class="receipt-row"><span>APPROVAL CODE:</span><strong>${tx.approvalCode}</strong></div>
-          <div class="receipt-row"><span>CARD:</span><span>${tx.cardNumber}</span></div>
-          <div style="text-align:center; margin-top:10px; font-size:10px; color:var(--muted);">*** THANK YOU FOR YOUR BUSINESS ***</div>
         `;
         cart = [];
+        activeQrisRef = '';
+        document.getElementById('cryptoTxHash').value = '';
         renderCart();
         loadData();
       } else {
@@ -278,14 +475,15 @@
     }
 
     async function closeShift() {
+      if (!activeOperator) return;
       const res = await fetch('/api/shift/close', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ cashierName: 'Razalee Syahdan', startingFloat: 500000 })
+        body: JSON.stringify({ operator: activeOperator, startingFloat: 500000 })
       });
       const data = await res.json();
       if (data.success) {
-        alert(`Shift Closed Successfully!\nShift ID: ${data.report.shiftId}\nTotal Transactions: ${data.report.totalTransactions}\nTotal Revenue: Rp ${data.report.totalRevenue.toLocaleString('id-ID')}`);
+        alert(`Z-Report Closed by ${data.report.operator.name}\nShift ID: ${data.report.shiftId}\nTransactions: ${data.report.totalTransactions}\nRevenue: Rp ${data.report.totalRevenue.toLocaleString('id-ID')}`);
       }
     }
 
@@ -294,8 +492,6 @@
       const data = await res.json();
       alert(data.message);
     }
-
-    loadData();
   </script>
 </body>
 </html>
