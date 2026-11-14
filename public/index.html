@@ -3,209 +3,241 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>KONGALIPOS — Merchant Terminal / Simulator</title>
+  <title>KONGALIPOS — Enterprise POS Terminal</title>
   <style>
     :root {
-      --bg: #081014;
-      --card: #0e191f;
-      --border: #1b2f38;
+      --bg: #071014;
+      --card: #0d181e;
+      --border: #182c35;
       --accent: #22d3ee;
       --accent-dim: rgba(34, 211, 238, 0.12);
       --text: #f1f5f9;
       --muted: #64748b;
+      --success: #10b981;
+      --danger: #ef4444;
     }
     * { box-sizing: border-box; font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; }
     body {
       margin: 0; background: var(--bg); color: var(--text);
-      display: flex; justify-content: center; padding: 24px 16px;
+      display: flex; justify-content: center; padding: 20px;
     }
-    .terminal { width: 100%; max-width: 440px; }
-    .header { display: flex; align-items: center; gap: 12px; margin-bottom: 24px; }
+    .container { width: 100%; max-width: 900px; display: grid; grid-template-columns: 1.2fr 1fr; gap: 20px; }
+    @media (max-width: 768px) { .container { grid-template-columns: 1fr; } }
+    
+    .panel {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 14px; padding: 16px; margin-bottom: 14px;
+    }
+    .header { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; grid-column: span 2; }
     .logo {
-      width: 42px; height: 42px; border-radius: 10px; background: var(--accent);
+      width: 44px; height: 44px; border-radius: 10px; background: var(--accent);
       display: flex; align-items: center; justify-content: center; color: #041014; font-weight: 800; font-size: 20px;
     }
     .brand-title { font-weight: 800; letter-spacing: 0.5px; font-size: 16px; }
     .brand-title span { color: var(--accent); }
     .brand-sub { font-size: 10px; letter-spacing: 1.5px; color: var(--muted); text-transform: uppercase; }
-    .section-tag { font-size: 11px; letter-spacing: 1.8px; color: var(--accent); text-transform: uppercase; margin-bottom: 4px; }
-    h1 { margin: 0 0 20px; font-size: 26px; font-weight: 700; }
-    .panel {
-      background: var(--card); border: 1px solid var(--border);
-      border-radius: 14px; padding: 16px; margin-bottom: 14px;
+    
+    .label { font-size: 10px; letter-spacing: 1.4px; color: var(--muted); text-transform: uppercase; margin-bottom: 6px; display: block; }
+    .product-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; }
+    .prod-card {
+      background: #0a1419; border: 1px solid var(--border); border-radius: 10px; padding: 10px; cursor: pointer; transition: 0.2s;
     }
-    .panel-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
-    .label { font-size: 10px; letter-spacing: 1.4px; color: var(--muted); text-transform: uppercase; }
-    select {
-      background: #0a1419; color: var(--text); border: 1px solid var(--border);
-      padding: 6px 10px; border-radius: 8px; font-size: 12px; outline: none;
-    }
-    .amount-row { display: flex; align-items: baseline; gap: 10px; border-bottom: 1px solid var(--border); padding-bottom: 10px; }
-    .curr-prefix { font-size: 24px; color: var(--accent); font-weight: 600; }
-    input.amount-input {
-      background: transparent; border: none; color: var(--text); font-size: 32px;
-      font-weight: 700; width: 100%; outline: none;
-    }
-    .formatted-preview { text-align: right; font-size: 12px; color: var(--muted); margin-top: 8px; font-family: monospace; }
-    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px; }
+    .prod-card:hover { border-color: var(--accent); }
+    .prod-name { font-weight: 700; font-size: 13px; margin-bottom: 4px; }
+    .prod-price { font-size: 12px; color: var(--accent); font-weight: 600; }
+    .prod-stock { font-size: 10px; color: var(--muted); margin-top: 4px; }
+
+    .cart-list { max-height: 150px; overflow-y: auto; margin-bottom: 10px; }
+    .cart-item { display: flex; justify-content: space-between; font-size: 12px; padding: 4px 0; border-bottom: 1px solid var(--border); }
+    
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 6px; }
     .option-box {
-      border: 1px solid var(--border); border-radius: 10px; padding: 12px;
-      cursor: pointer; transition: 0.2s; background: #0a1318;
+      border: 1px solid var(--border); border-radius: 10px; padding: 10px;
+      cursor: pointer; transition: 0.2s; background: #0a1318; text-align: center; font-size: 12px;
     }
     .option-box.active { border-color: var(--accent); background: var(--accent-dim); }
-    .opt-title { font-weight: 700; font-size: 15px; margin-bottom: 3px; }
-    .opt-sub { font-size: 11px; color: var(--muted); }
-    input.card-input {
-      width: 100%; margin-top: 10px; background: #081014; border: 1px solid var(--border);
-      border-radius: 10px; padding: 12px; color: var(--text); font-family: monospace;
-      font-size: 15px; letter-spacing: 2px; outline: none;
+    
+    input, select {
+      width: 100%; background: #0a1419; color: var(--text); border: 1px solid var(--border);
+      padding: 10px; border-radius: 8px; font-size: 13px; outline: none; margin-top: 6px;
     }
+    input.card-input { font-family: monospace; letter-spacing: 1px; }
+
     .btn-primary {
       width: 100%; background: var(--accent); color: #041014; border: none;
-      border-radius: 12px; padding: 15px; font-weight: 800; font-size: 15px;
-      cursor: pointer; margin-top: 6px; letter-spacing: 0.5px;
+      border-radius: 12px; padding: 14px; font-weight: 800; font-size: 14px;
+      cursor: pointer; margin-top: 10px; letter-spacing: 0.5px;
     }
-    .btn-primary:hover { opacity: 0.92; }
-    .btn-sync {
+    .btn-secondary {
       width: 100%; background: transparent; color: var(--accent); border: 1px solid var(--accent);
       border-radius: 10px; padding: 10px; font-weight: 600; font-size: 12px;
-      cursor: pointer; margin-top: 10px;
+      cursor: pointer; margin-top: 6px;
     }
+
     .receipt {
-      display: none; background: #071216; border: 1px dashed var(--accent);
-      border-radius: 12px; padding: 14px; margin-top: 16px; font-family: monospace; font-size: 12px;
+      background: #050d11; border: 1px dashed var(--accent);
+      border-radius: 12px; padding: 14px; margin-top: 14px; font-family: monospace; font-size: 11px;
     }
-    .receipt div { display: flex; justify-content: space-between; margin-bottom: 6px; }
+    .receipt-title { text-align: center; font-weight: bold; font-size: 13px; margin-bottom: 8px; color: var(--accent); }
+    .receipt-row { display: flex; justify-content: space-between; margin-bottom: 4px; }
   </style>
 </head>
 <body>
-  <div class="terminal">
+  <div class="container">
     <div class="header">
       <div class="logo">💳</div>
       <div>
-        <div class="brand-title">KONGALI<span>POS</span></div>
-        <div class="brand-sub">Merchant Terminal / Simulator</div>
+        <div class="brand-title">KONGALI<span>POS</span> Enterprise Suite</div>
+        <div class="brand-sub">Advanced POS Terminal, ESC/POS & Shift Management</div>
       </div>
     </div>
 
-    <div class="section-tag">Transaction Console</div>
-    <h1>Accept payment</h1>
-
-    <div class="panel">
-      <div class="panel-top">
-        <span class="label">Transaction Amount</span>
-        <select id="currency" onchange="updatePreview()">
-          <option value="EUR" selected>EUR • Euro</option>
-          <option value="USD">USD • US Dollar</option>
-          <option value="IDR">IDR • Rupiah</option>
-        </select>
+    <!-- KOLOM KIRI: Katalog & Keranjang -->
+    <div>
+      <div class="panel">
+        <span class="label">Merchandise Catalog & Stock</span>
+        <div class="product-grid" id="productGrid"></div>
       </div>
-      <div class="amount-row">
-        <span class="curr-prefix" id="currPrefix">EUR</span>
-        <input type="number" id="amount" class="amount-input" value="125000" oninput="updatePreview()" />
-      </div>
-      <div class="formatted-preview" id="formattedPreview">125.000,00 €</div>
-    </div>
 
-    <div class="panel">
-      <span class="label">Connection Mode</span>
-      <div class="grid-2">
-        <div class="option-box active" id="modeOnline" onclick="setMode('Online')">
-          <div class="opt-title">📡 Online</div>
-          <div class="opt-sub">Server authorization</div>
+      <div class="panel">
+        <span class="label">Current Cart</span>
+        <div class="cart-list" id="cartList"><div style="color:var(--muted); font-size:12px;">Cart is empty</div></div>
+        <div style="font-size: 13px; font-weight:bold; display:flex; justify-content:space-between; margin-top:8px;">
+          <span>Subtotal:</span> <span id="cartSubtotal">Rp 0</span>
         </div>
-        <div class="option-box" id="modeOffline" onclick="setMode('Offline')">
-          <div class="opt-title">📴 Offline</div>
-          <div class="opt-sub">Store & forward</div>
-        </div>
+      </div>
+
+      <div class="panel">
+        <span class="label">Shift & Cash Drawer (Z-Report)</span>
+        <button class="btn-secondary" onclick="closeShift()">🔒 CLOSE SHIFT / Z-REPORT</button>
       </div>
     </div>
 
-    <div class="panel">
-      <span class="label">Protocol</span>
-      <div class="grid-2">
-        <div class="option-box active" id="proto101" onclick="setProtocol('101.3')">
-          <div class="opt-title">101.3</div>
-          <div class="opt-sub">Standard auth</div>
-        </div>
-        <div class="option-box" id="proto201" onclick="setProtocol('201.1')">
-          <div class="opt-title">201.1</div>
-          <div class="opt-sub">Extended auth</div>
+    <!-- KOLOM KANAN: Pembayaran, Protokol & Struk ESC/POS -->
+    <div>
+      <div class="panel">
+        <span class="label">Connection & Mode</span>
+        <div class="grid-2">
+          <div class="option-box active" id="modeOnline" onclick="setMode('Online')">📡 Online Auth</div>
+          <div class="option-box" id="modeOffline" onclick="setMode('Offline')">📴 Offline Store & Forward</div>
         </div>
       </div>
-    </div>
 
-    <div class="panel">
-      <span class="label">Card Number (Demo)</span>
-      <input type="text" id="cardNumber" class="card-input" value="4242 4242 4242 4242" maxlength="19" />
-    </div>
-
-    <div class="panel">
-      <span class="label">Approval Code Format & Input</span>
-      <div class="grid-2">
-        <div class="option-box" id="app4" onclick="setApprovalDigits(4)">
-          <div class="opt-title">4-Digit</div>
-          <div class="opt-sub">Short Auth Code</div>
-        </div>
-        <div class="option-box active" id="app6" onclick="setApprovalDigits(6)">
-          <div class="opt-title">6-Digit</div>
-          <div class="opt-sub">Standard ISO Code</div>
+      <div class="panel">
+        <span class="label">Protocol Version</span>
+        <div class="grid-2">
+          <div class="option-box active" id="proto101" onclick="setProtocol('101.3')">101.3 Standard</div>
+          <div class="option-box" id="proto201" onclick="setProtocol('201.1')">201.1 Extended</div>
         </div>
       </div>
-      <input type="text" id="customApprovalCode" class="card-input" placeholder="Auto-generate or enter 6 digits" maxlength="6" oninput="this.value = this.value.replace(/[^0-9]/g, '')" />
+
+      <div class="panel">
+        <span class="label">Approval Code Format</span>
+        <div class="grid-2">
+          <div class="option-box" id="app4" onclick="setApprovalDigits(4)">4-Digit Code</div>
+          <div class="option-box active" id="app6" onclick="setApprovalDigits(6)">6-Digit ISO</div>
+        </div>
+        <input type="text" id="customApprovalCode" class="card-input" placeholder="Auto or enter code" maxlength="6" />
+      </div>
+
+      <div class="panel">
+        <span class="label">Card Number (Demo)</span>
+        <input type="text" id="cardNumber" class="card-input" value="4242 4242 4242 4242" maxlength="19" />
+      </div>
+
+      <button class="btn-primary" onclick="processPayment()">⚡ AUTHORIZE & PRINT RECEIPT</button>
+      <button class="btn-secondary" onclick="syncOffline()">🔄 SYNC OFFLINE QUEUE</button>
+
+      <div class="receipt" id="receiptBox" style="display:none;"></div>
     </div>
-
-    <button class="btn-primary" onclick="processPayment()">⚡ AUTHORIZE PAYMENT</button>
-    <button class="btn-sync" onclick="syncOffline()">🔄 SYNC OFFLINE STORE & FORWARD QUEUE</button>
-
-    <div class="receipt" id="receiptBox"></div>
   </div>
 
   <script>
+    let products = [];
+    let cart = [];
     let selectedMode = 'Online';
     let selectedProtocol = '101.3';
     let selectedApprovalDigits = 6;
 
-    function setMode(mode) {
-      selectedMode = mode;
-      document.getElementById('modeOnline').classList.toggle('active', mode === 'Online');
-      document.getElementById('modeOffline').classList.toggle('active', mode === 'Offline');
+    async function loadData() {
+      const res = await fetch('/api/pos/data');
+      const data = await res.json();
+      products = data.products;
+      renderProducts();
     }
 
-    function setProtocol(proto) {
-      selectedProtocol = proto;
-      document.getElementById('proto101').classList.toggle('active', proto === '101.3');
-      document.getElementById('proto201').classList.toggle('active', proto === '201.1');
+    function renderProducts() {
+      const grid = document.getElementById('productGrid');
+      grid.innerHTML = products.map(p => `
+        <div class="prod-card" onclick="addToCart('${p.id}')">
+          <div class="prod-name">${p.name}</div>
+          <div class="prod-price">Rp ${p.price.toLocaleString('id-ID')}</div>
+          <div class="prod-stock">Stock: ${p.stock} units</div>
+        </div>
+      `).join('');
     }
 
-    function setApprovalDigits(digits) {
-      selectedApprovalDigits = digits;
-      document.getElementById('app4').classList.toggle('active', digits === 4);
-      document.getElementById('app6').classList.toggle('active', digits === 6);
+    function addToCart(id) {
+      const p = products.find(x => x.id === id);
+      if (!p || p.stock <= 0) return alert('Out of stock!');
+      const existing = cart.find(x => x.id === id);
+      if (existing) {
+        if (existing.qty >= p.stock) return alert('Max stock reached');
+        existing.qty++;
+      } else {
+        cart.push({ id: p.id, name: p.name, price: p.price, qty: 1 });
+      }
+      renderCart();
+    }
+
+    function renderCart() {
+      const list = document.getElementById('cartList');
+      if (cart.length === 0) {
+        list.innerHTML = '<div style="color:var(--muted); font-size:12px;">Cart is empty</div>';
+        document.getElementById('cartSubtotal').innerText = 'Rp 0';
+        return;
+      }
+      let subtotal = 0;
+      list.innerHTML = cart.map(item => {
+        subtotal += item.price * item.qty;
+        return `<div class="cart-item"><span>${item.name} (x${item.qty})</span><span>Rp ${(item.price * item.qty).toLocaleString('id-ID')}</span></div>`;
+      }).join('');
+      document.getElementById('cartSubtotal').innerText = 'Rp ' + subtotal.toLocaleString('id-ID');
+    }
+
+    function setMode(m) {
+      selectedMode = m;
+      document.getElementById('modeOnline').classList.toggle('active', m === 'Online');
+      document.getElementById('modeOffline').classList.toggle('active', m === 'Offline');
+    }
+
+    function setProtocol(p) {
+      selectedProtocol = p;
+      document.getElementById('proto101').classList.toggle('active', p === '101.3');
+      document.getElementById('proto201').classList.toggle('active', p === '201.1');
+    }
+
+    function setApprovalDigits(d) {
+      selectedApprovalDigits = d;
+      document.getElementById('app4').classList.toggle('active', d === 4);
+      document.getElementById('app6').classList.toggle('active', d === 6);
       const input = document.getElementById('customApprovalCode');
-      input.maxLength = digits;
-      input.value = input.value.slice(0, digits);
-      input.placeholder = `Auto-generate or enter ${digits} digits`;
-    }
-
-    function updatePreview() {
-      const curr = document.getElementById('currency').value;
-      const val = Number(document.getElementById('amount').value || 0);
-      document.getElementById('currPrefix').innerText = curr;
-      const symbols = { EUR: '€', USD: '$', IDR: 'Rp' };
-      document.getElementById('formattedPreview').innerText =
-        val.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' ' + symbols[curr];
+      input.maxLength = d;
+      input.placeholder = `Auto or enter ${d} digits`;
     }
 
     async function processPayment() {
+      if (cart.length === 0) return alert('Please add items to cart first.');
       const payload = {
-        amount: document.getElementById('amount').value,
-        currency: document.getElementById('currency').value,
+        items: cart,
+        currency: 'IDR',
         mode: selectedMode,
         protocol: selectedProtocol,
         cardNumber: document.getElementById('cardNumber').value,
         approvalDigits: selectedApprovalDigits,
-        customApprovalCode: document.getElementById('customApprovalCode').value
+        customApprovalCode: document.getElementById('customApprovalCode').value,
+        taxRate: 11,
+        serviceRate: 5
       };
 
       const res = await fetch('/api/transactions/authorize', {
@@ -219,16 +251,41 @@
 
       if (data.success) {
         const tx = data.transaction;
+        let itemsHtml = tx.items.map(i => `<div class="receipt-row"><span>${i.name} x${i.qty}</span><span>Rp ${(i.price * i.qty).toLocaleString('id-ID')}</span></div>`).join('');
         box.innerHTML = `
-          <div><span>STATUS:</span><strong style="color:#10b981">${tx.status}</strong></div>
-          <div><span>TX ID:</span><span>${tx.id}</span></div>
-          <div><span>APPROVAL CODE (${tx.approvalDigits}D):</span><strong>${tx.approvalCode}</strong></div>
-          <div><span>AMOUNT:</span><span>${tx.currency}${tx.amount.toLocaleString('de-DE')}</span></div>
-          <div><span>PROTOCOL:</span><span>${tx.protocol} (${tx.protocolType})</span></div>
-          <div><span>CARD:</span><span>${tx.cardNumber}</span></div>
+          <div class="receipt-title">KONGALIPOS MERCHANT TICKET</div>
+          <div class="receipt-row"><span>TX ID:</span><span>${tx.id}</span></div>
+          <div class="receipt-row"><span>DATE:</span><span>${new Date(tx.timestamp).toLocaleString()}</span></div>
+          <div style="border-top:1px dashed var(--accent); margin: 6px 0;"></div>
+          ${itemsHtml}
+          <div style="border-top:1px dashed var(--accent); margin: 6px 0;"></div>
+          <div class="receipt-row"><span>SUBTOTAL:</span><span>Rp ${tx.subtotal.toLocaleString('id-ID')}</span></div>
+          <div class="receipt-row"><span>TAX (11%):</span><span>Rp ${tx.taxAmount.toLocaleString('id-ID')}</span></div>
+          <div class="receipt-row"><span>SERVICE (5%):</span><span>Rp ${tx.serviceAmount.toLocaleString('id-ID')}</span></div>
+          <div class="receipt-row" style="font-weight:bold; color:var(--accent);"><span>GRAND TOTAL:</span><span>Rp ${tx.amount.toLocaleString('id-ID')}</span></div>
+          <div style="border-top:1px dashed var(--accent); margin: 6px 0;"></div>
+          <div class="receipt-row"><span>STATUS:</span><strong style="color:var(--success)">${tx.status}</strong></div>
+          <div class="receipt-row"><span>APPROVAL CODE:</span><strong>${tx.approvalCode}</strong></div>
+          <div class="receipt-row"><span>CARD:</span><span>${tx.cardNumber}</span></div>
+          <div style="text-align:center; margin-top:10px; font-size:10px; color:var(--muted);">*** THANK YOU FOR YOUR BUSINESS ***</div>
         `;
+        cart = [];
+        renderCart();
+        loadData();
       } else {
-        box.innerHTML = `<div style="color:#ef4444">ERROR: ${data.message}</div>`;
+        box.innerHTML = `<div style="color:var(--danger)">ERROR: ${data.message}</div>`;
+      }
+    }
+
+    async function closeShift() {
+      const res = await fetch('/api/shift/close', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ cashierName: 'Razalee Syahdan', startingFloat: 500000 })
+      });
+      const data = await res.json();
+      if (data.success) {
+        alert(`Shift Closed Successfully!\nShift ID: ${data.report.shiftId}\nTotal Transactions: ${data.report.totalTransactions}\nTotal Revenue: Rp ${data.report.totalRevenue.toLocaleString('id-ID')}`);
       }
     }
 
@@ -237,6 +294,8 @@
       const data = await res.json();
       alert(data.message);
     }
+
+    loadData();
   </script>
 </body>
 </html>
