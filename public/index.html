@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>KONGALIPOS — Merchant Terminal / Simulator</title>
+  <style>
+    :root {
+      --bg: #081014;
+      --card: #0e191f;
+      --border: #1b2f38;
+      --accent: #22d3ee;
+      --accent-dim: rgba(34, 211, 238, 0.12);
+      --text: #f1f5f9;
+      --muted: #64748b;
+      --success: #10b981;
+    }
+    * { box-sizing: border-box; font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; }
+    body {
+      margin: 0; background: var(--bg); color: var(--text);
+      display: flex; justify-content: center; padding: 24px 16px;
+    }
+    .terminal { width: 100%; max-width: 440px; }
+    .header { display: flex; align-items: center; gap: 12px; margin-bottom: 24px; }
+    .logo {
+      width: 42px; height: 42px; border-radius: 10px; background: var(--accent);
+      display: flex; align-items: center; justify-content: center; color: #041014; font-weight: 800; font-size: 20px;
+    }
+    .brand-title { font-weight: 800; letter-spacing: 0.5px; font-size: 16px; }
+    .brand-title span { color: var(--accent); }
+    .brand-sub { font-size: 10px; letter-spacing: 1.5px; color: var(--muted); text-transform: uppercase; }
+    .section-tag { font-size: 11px; letter-spacing: 1.8px; color: var(--accent); text-transform: uppercase; margin-bottom: 4px; }
+    h1 { margin: 0 0 20px; font-size: 26px; font-weight: 700; }
+    .panel {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 14px; padding: 16px; margin-bottom: 14px;
+    }
+    .panel-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+    .label { font-size: 10px; letter-spacing: 1.4px; color: var(--muted); text-transform: uppercase; }
+    select {
+      background: #0a1419; color: var(--text); border: 1px solid var(--border);
+      padding: 6px 10px; border-radius: 8px; font-size: 12px; outline: none;
+    }
+    .amount-row { display: flex; align-items: baseline; gap: 10px; border-bottom: 1px solid var(--border); padding-bottom: 10px; }
+    .curr-prefix { font-size: 24px; color: var(--accent); font-weight: 600; }
+    input.amount-input {
+      background: transparent; border: none; color: var(--text); font-size: 32px;
+      font-weight: 700; width: 100%; outline: none;
+    }
+    .formatted-preview { text-align: right; font-size: 12px; color: var(--muted); margin-top: 8px; font-family: monospace; }
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px; }
+    .option-box {
+      border: 1px solid var(--border); border-radius: 10px; padding: 12px;
+      cursor: pointer; transition: 0.2s; background: #0a1318;
+    }
+    .option-box.active { border-color: var(--accent); background: var(--accent-dim); }
+    .opt-title { font-weight: 700; font-size: 15px; margin-bottom: 3px; }
+    .opt-sub { font-size: 11px; color: var(--muted); }
+    input.card-input {
+      width: 100%; margin-top: 10px; background: #081014; border: 1px solid var(--border);
+      border-radius: 10px; padding: 12px; color: var(--text); font-family: monospace;
+      font-size: 15px; letter-spacing: 2px; outline: none;
+    }
+    .btn-primary {
+      width: 100%; background: var(--accent); color: #041014; border: none;
+      border-radius: 12px; padding: 15px; font-weight: 800; font-size: 15px;
+      cursor: pointer; margin-top: 6px; letter-spacing: 0.5px;
+    }
+    .btn-primary:hover { opacity: 0.92; }
+    .btn-sync {
+      width: 100%; background: transparent; color: var(--accent); border: 1px solid var(--accent);
+      border-radius: 10px; padding: 10px; font-weight: 600; font-size: 12px;
+      cursor: pointer; margin-top: 10px;
+    }
+    .receipt {
+      display: none; background: #071216; border: 1px dashed var(--accent);
+      border-radius: 12px; padding: 14px; margin-top: 16px; font-family: monospace; font-size: 12px;
+    }
+    .receipt div { display: flex; justify-content: space-between; margin-bottom: 6px; }
+  </style>
+</head>
+<body>
+  <div class="terminal">
+    <div class="header">
+      <div class="logo">💳</div>
+      <div>
+        <div class="brand-title">KONGALI<span>POS</span></div>
+        <div class="brand-sub">Merchant Terminal / Simulator</div>
+      </div>
+    </div>
+
+    <div class="section-tag">Transaction Console</div>
+    <h1>Accept payment</h1>
+
+    <div class="panel">
+      <div class="panel-top">
+        <span class="label">Transaction Amount</span>
+        <select id="currency" onchange="updatePreview()">
+          <option value="EUR" selected>EUR • Euro</option>
+          <option value="USD">USD • US Dollar</option>
+          <option value="IDR">IDR • Rupiah</option>
+        </select>
+      </div>
+      <div class="amount-row">
+        <span class="curr-prefix" id="currPrefix">EUR</span>
+        <input type="number" id="amount" class="amount-input" value="125000" oninput="updatePreview()" />
+      </div>
+      <div class="formatted-preview" id="formattedPreview">125.000,00 €</div>
+    </div>
+
+    <div class="panel">
+      <span class="label">Connection Mode</span>
+      <div class="grid-2">
+        <div class="option-box active" id="modeOnline" onclick="setMode('Online')">
+          <div class="opt-title">📡 Online</div>
+          <div class="opt-sub">Server authorization</div>
+        </div>
+        <div class="option-box" id="modeOffline" onclick="setMode('Offline')">
+          <div class="opt-title">📴 Offline</div>
+          <div class="opt-sub">Store & forward</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <span class="label">Protocol</span>
+      <div class="grid-2">
+        <div class="option-box active" id="proto101" onclick="setProtocol('101.3')">
+          <div class="opt-title">101.3</div>
+          <div class="opt-sub">Standard auth</div>
+        </div>
+        <div class="option-box" id="proto201" onclick="setProtocol('201.1')">
+          <div class="opt-title">201.1</div>
+          <div class="opt-sub">Extended auth</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <span class="label">Card Number (Demo)</span>
+      <input type="text" id="cardNumber" class="card-input" value="4242 4242 4242 4242" maxlength="19" />
+    </div>
+
+    <button class="btn-primary" onclick="processPayment()">⚡ AUTHORIZE PAYMENT</button>
+    <button class="btn-sync" onclick="syncOffline()">🔄 SYNC OFFLINE STORE & FORWARD QUEUE</button>
+
+    <div class="receipt" id="receiptBox"></div>
+  </div>
+
+  <script>
+    let selectedMode = 'Online';
+    let selectedProtocol = '101.3';
+
+    function setMode(mode) {
+      selectedMode = mode;
+      document.getElementById('modeOnline').classList.toggle('active', mode === 'Online');
+      document.getElementById('modeOffline').classList.toggle('active', mode === 'Offline');
+    }
+
+    function setProtocol(proto) {
+      selectedProtocol = proto;
+      document.getElementById('proto101').classList.toggle('active', proto === '101.3');
+      document.getElementById('proto201').classList.toggle('active', proto === '201.1');
+    }
+
+    function updatePreview() {
+      const curr = document.getElementById('currency').value;
+      const val = Number(document.getElementById('amount').value || 0);
+      document.getElementById('currPrefix').innerText = curr;
+      const symbols = { EUR: '€', USD: '$', IDR: 'Rp' };
+      document.getElementById('formattedPreview').innerText =
+        val.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' ' + symbols[curr];
+    }
+
+    async function processPayment() {
+      const payload = {
+        amount: document.getElementById('amount').value,
+        currency: document.getElementById('currency').value,
+        mode: selectedMode,
+        protocol: selectedProtocol,
+        cardNumber: document.getElementById('cardNumber').value
+      };
+
+      const res = await fetch('/api/transactions/authorize', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+      const box = document.getElementById('receiptBox');
+      box.style.display = 'block';
+
+      if (data.success) {
+        const tx = data.transaction;
+        box.innerHTML = `
+          <div><span>STATUS:</span><strong style="color:#10b981">${tx.status}</strong></div>
+          <div><span>TX ID:</span><span>${tx.id}</span></div>
+          <div><span>APPROVAL CODE:</span><strong>${tx.approvalCode}</strong></div>
+          <div><span>AMOUNT:</span><span>${tx.currency}${tx.amount.toLocaleString('de-DE')}</span></div>
+          <div><span>PROTOCOL:</span><span>${tx.protocol} (${tx.protocolType})</span></div>
+          <div><span>CARD:</span><span>${tx.cardNumber}</span></div>
+        `;
+      } else {
+        box.innerHTML = `<div style="color:#ef4444">ERROR: ${data.message}</div>`;
+      }
+    }
+
+    async function syncOffline() {
+      const res = await fetch('/api/transactions/sync', { method: 'POST' });
+      const data = await res.json();
+      alert(data.message);
+    }
+  </script>
+</body>
+</html>
