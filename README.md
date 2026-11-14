@@ -2,7 +2,7 @@
   <img src="https://raw.githubusercontent.com/kongali1720/KongWallet-Payment-Gateway-API/main/kop_surat.jpg" width="100%" alt="Project Letterhead">
 </p>
 
-<h1 align="center">KONGALIPOS 💳</h1>
+<h1 align="center">KONGALI-POS 💳</h1>
 
 <p align="center">
   <b>Merchant Terminal & Point of Sale (POS) Simulator Engine tailored for multi-currency payments, dual-mode authorization, and fast checkout processing.</b>
