@@ -13,7 +13,6 @@
       --accent-dim: rgba(34, 211, 238, 0.12);
       --text: #f1f5f9;
       --muted: #64748b;
-      --success: #10b981;
     }
     * { box-sizing: border-box; font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; }
     body {
@@ -141,6 +140,21 @@
       <input type="text" id="cardNumber" class="card-input" value="4242 4242 4242 4242" maxlength="19" />
     </div>
 
+    <div class="panel">
+      <span class="label">Approval Code Format & Input</span>
+      <div class="grid-2">
+        <div class="option-box" id="app4" onclick="setApprovalDigits(4)">
+          <div class="opt-title">4-Digit</div>
+          <div class="opt-sub">Short Auth Code</div>
+        </div>
+        <div class="option-box active" id="app6" onclick="setApprovalDigits(6)">
+          <div class="opt-title">6-Digit</div>
+          <div class="opt-sub">Standard ISO Code</div>
+        </div>
+      </div>
+      <input type="text" id="customApprovalCode" class="card-input" placeholder="Auto-generate or enter 6 digits" maxlength="6" oninput="this.value = this.value.replace(/[^0-9]/g, '')" />
+    </div>
+
     <button class="btn-primary" onclick="processPayment()">⚡ AUTHORIZE PAYMENT</button>
     <button class="btn-sync" onclick="syncOffline()">🔄 SYNC OFFLINE STORE & FORWARD QUEUE</button>
 
@@ -150,6 +164,7 @@
   <script>
     let selectedMode = 'Online';
     let selectedProtocol = '101.3';
+    let selectedApprovalDigits = 6;
 
     function setMode(mode) {
       selectedMode = mode;
@@ -161,6 +176,16 @@
       selectedProtocol = proto;
       document.getElementById('proto101').classList.toggle('active', proto === '101.3');
       document.getElementById('proto201').classList.toggle('active', proto === '201.1');
+    }
+
+    function setApprovalDigits(digits) {
+      selectedApprovalDigits = digits;
+      document.getElementById('app4').classList.toggle('active', digits === 4);
+      document.getElementById('app6').classList.toggle('active', digits === 6);
+      const input = document.getElementById('customApprovalCode');
+      input.maxLength = digits;
+      input.value = input.value.slice(0, digits);
+      input.placeholder = `Auto-generate or enter ${digits} digits`;
     }
 
     function updatePreview() {
@@ -178,7 +203,9 @@
         currency: document.getElementById('currency').value,
         mode: selectedMode,
         protocol: selectedProtocol,
-        cardNumber: document.getElementById('cardNumber').value
+        cardNumber: document.getElementById('cardNumber').value,
+        approvalDigits: selectedApprovalDigits,
+        customApprovalCode: document.getElementById('customApprovalCode').value
       };
 
       const res = await fetch('/api/transactions/authorize', {
@@ -195,7 +222,7 @@
         box.innerHTML = `
           <div><span>STATUS:</span><strong style="color:#10b981">${tx.status}</strong></div>
           <div><span>TX ID:</span><span>${tx.id}</span></div>
-          <div><span>APPROVAL CODE:</span><strong>${tx.approvalCode}</strong></div>
+          <div><span>APPROVAL CODE (${tx.approvalDigits}D):</span><strong>${tx.approvalCode}</strong></div>
           <div><span>AMOUNT:</span><span>${tx.currency}${tx.amount.toLocaleString('de-DE')}</span></div>
           <div><span>PROTOCOL:</span><span>${tx.protocol} (${tx.protocolType})</span></div>
           <div><span>CARD:</span><span>${tx.cardNumber}</span></div>
